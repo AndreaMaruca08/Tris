@@ -1,285 +1,1 @@
-package ui;
-
-import logic.*;
-import logic.enums.CheckType;
-import logic.enums.Difficulty;
-import logic.enums.Symbol;
-import logic.save.GameSave;
-import logic.save.GameSaveUtil;
-
-import static logic.GameFunctions.clean;
-import static logic.GameFunctions.turnoAi;
-import static logic.enums.CheckType.*;
-import static logic.enums.Symbol.*;
-import static ui.UIUtils.*;
-
-import javax.swing.*;
-import javax.swing.border.LineBorder;
-import java.awt.*;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
-/**
- * Main UI class for the Tic Tac Toe game application
- */
-public class UiApplication {
-    /**
-     * AI player instance
-     */
-    private static Ai ai = new Ai();
-
-    /**
-     * Human player instance
-     */
-    private static Player player = new Player();
-
-    /**
-     * Represents the current mode configuration for the application.
-     * The mode is of type {@link CheckType} and determines the type of validation
-     * or interaction being conducted within the application.
-     * Possible values for the mode include specific predefined types such as
-     * {@code HORIZONTAL}, {@code VERTICALE}, {@code LINEAR}, {@code DIAGONALE},
-     * {@code ANTIDIAGONALE}, {@code OBLIQUO}, or {@code ALL}.
-     * The default configuration for this variable is set to {@code ALL}.
-     * This configuration impacts the behavior of the application logic.
-     */
-    private static CheckType mode = ALL;
-
-    /**
-     * Main application window
-     */
-    private static JFrame frame;
-
-    /**
-     * Initializes and starts the game UI
-     */
-    public void start() {
-        copyright();
-        frame = new JFrame("Tick Tack Toe");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(getX(100), getY(100));
-        frame.setLocationRelativeTo(null);
-
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.setLayout(null);
-
-        var dif = menuPanel();
-        gamePanel(dif);
-        frame.setVisible(true);
-    }
-
-    /**
-     * Creates and configures the menu panel with difficulty and player settings
-     * @return Selected game difficulty
-     */
-    public static Difficulty menuPanel() {
-        var panel = new JPanel();
-        panel.removeAll();
-        panel.revalidate();
-        panel.repaint();
-        panel.setBounds(getX(0), getY(0), getX(25), getY(20));
-        panel.setBackground(Color.white);
-        panel.setLayout(new GridLayout(3, 1, 4, 4));
-
-        // Panel for difficulty settings
-        var panelDiff = new JPanel();
-        panelDiff.setBounds(getX(0), getY(0), getX(25), getY(20));
-        panelDiff.setBackground(Color.gray);
-        panelDiff.setLayout(new GridLayout(1, 3, 4, 4));
-        panelDiff.setBorder(new LineBorder(Color.DARK_GRAY, 2));
-
-        var labelDiff = creaLabel("Difficoltà", 0, 0, 100, 10, 12, Color.black);
-        panelDiff.add(labelDiff);
-        var comboDiff = new JComboBox<>(Difficulty.values());
-        comboDiff.setBounds(getX(0), getY(0), getX(100), getY(20));
-        panelDiff.add(comboDiff);
-        var salva = new JButton();
-        salva.setText("Salva");
-        ai = new Ai((Difficulty) comboDiff.getSelectedItem(), X, player.getSymbolIndex());
-        salva.addActionListener(e -> {
-            ai = new Ai((Difficulty) comboDiff.getSelectedItem(), X, player.getSymbolIndex());
-            gamePanel(ai.getDifficulty());
-        });
-        panel.add(panelDiff);
-        panel.add(salva);
-
-        // Load saved game data
-        var save = new GameSave();
-        try {
-            save = GameSaveUtil.caricaDaFile("save.json");
-        } catch (IOException e) {
-            System.out.println("errore nel caricamento dati");
-        } catch (NullPointerException e) {
-            System.out.println("dati nulli");
-        }
-        player = save.getPlayer() == null ? new Player("Player 1", X, 0) : save.getPlayer();
-
-        // Player settings panel
-        var panelPlayer = new JPanel();
-        panelPlayer.setBounds(getX(0), getY(20), getX(25), getY(20));
-        panelPlayer.setBackground(Color.gray);
-        panelPlayer.setLayout(new GridLayout(2, 7, 4, 4));
-        panelPlayer.setBorder(new LineBorder(Color.DARK_GRAY, 2));
-
-        // Player stats labels
-        panelPlayer.add(new JLabel("Nome giocatore"));
-        panelPlayer.add(new JLabel("inserisci stile"));
-        panelPlayer.add(new JLabel("Simbolo"));
-        panelPlayer.add(new JLabel("Vittorie"));
-        panelPlayer.add(new JLabel("Sconfitte"));
-        panelPlayer.add(new JLabel("Pareggi"));
-        panelPlayer.add(new JLabel(""));
-
-        var areaNome = new JTextField(player.getNome());
-        panelPlayer.add(areaNome);
-
-        //symbol style
-        String[] style = {"normale", "tipo1", "tipo2"};
-        var comboStyle = new JComboBox<>(style);
-        panelPlayer.add(comboStyle);
-
-        // Symbol selection
-        var panelSimbolo = new JPanel(new GridLayout(2, 1, 4, 4));
-        var comboPlayer = new JComboBox<>(new Symbol[]{player.getSimbolo(), player.getSimbolo() == X ? O : X});
-        var savebtnS = new JButton();
-        savebtnS.setText("Salva player");
-        savebtnS.addActionListener(e -> {
-            try {
-                var simbolo = (Symbol) comboPlayer.getSelectedItem();
-                player.setNome(areaNome.getText());
-                player.setSimbolo(simbolo);
-                player.setSymbolIndex(comboStyle.getSelectedIndex());
-                GameSaveUtil.salvaSuFile(new GameSave(player), "save.json");
-
-                menuPanel();
-                gamePanel(ai.getDifficulty());
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-            menuPanel();
-        });
-        panelSimbolo.add(comboPlayer);
-        panelSimbolo.add(savebtnS);
-        panelPlayer.add(panelSimbolo);
-
-        // Stats display
-        panelPlayer.add(new JLabel(String.valueOf(player.getVittorie())));
-        panelPlayer.add(new JLabel(String.valueOf(player.getSconfitte())));
-        panelPlayer.add(new JLabel(String.valueOf(player.getPareggi())));
-
-        //button for reset
-        var reset = new JButton("Reset");
-        reset.addActionListener(e -> {
-            player.setVittorie(0);
-            player.setSconfitte(0);
-            player.setPareggi(0);
-            menuPanel();
-            try {
-                GameSaveUtil.salvaSuFile(new GameSave(player), "save.json");
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-
-        });
-        panelPlayer.add(reset);
-
-        frame.add(panelPlayer);
-        frame.add(panel);
-
-        return (Difficulty) comboDiff.getSelectedItem();
-    }
-
-    /**
-     * Creates and configures the main game board panel
-     *
-     * @param difficulty Selected game difficulty
-     */
-    public static void gamePanel(Difficulty difficulty) {
-        var panel = new JPanel();
-
-        panel.setBounds(getX(25), getY(0), getX(55), getY(100));
-        panel.setBackground(Color.white);
-        panel.setLayout(null);
-        //messaggio per far capire che modalità è:
-        var moda = new JLabel("Mod : " + mode.toString() + " " + (mode == ALL ? "(normale tris)" : "(tris modificato)"));
-        moda.setBounds(getX(0), getY(20), getX(30), getY(20));
-        panel.add(moda);
-
-        //Game rule
-        var panelRule = new JPanel(new GridLayout(2, 2, 4, 4));
-        panelRule.setBounds(getX(0), getY(0), getX(30), getY(20));
-        panelRule.add(new JLabel("Scegli la modalità di vincita"));
-        var comboRule = new JComboBox<>(new CheckType[]{ALL, HORIZONTAL, VERTICALE, LINEAR, DIAGONALE, ANTIDIAGONALE, OBLIQUO});
-        panelRule.add(comboRule);
-        //bottone per applicare
-        var salva = new JButton("Applica");
-        salva.addActionListener(e -> {
-            mode = (CheckType) comboRule.getSelectedItem();
-            moda.setText("Mod : " + Objects.requireNonNull(mode) + " " + (mode == ALL ? "(normale tris)" : "(tris modificato)"));
-        });
-        panelRule.add(salva);
-
-        panel.add(panelRule);
-
-        // Game board panel
-        int size = 3;
-        var panelGioco = new JPanel();
-        panelGioco.setBounds(getX(10), getY(50), getX(30), getY(40));
-        panelGioco.setBackground(Color.gray);
-        panelGioco.setLayout(new GridLayout(size, size, 4, 4));
-        panelGioco.setBorder(new LineBorder(Color.DARK_GRAY, 2));
-
-        // Create game cells
-        ai = new Ai(difficulty, player.getSimbolo() == X ? O : X, player.getSymbolIndex());
-        List<Casella> caselle = new ArrayList<>();
-        for (int i = 0; i < size * size; i++) {
-            var casella = new Casella();
-
-            casella.addActionListener(e -> {
-                // Se è già usata esce
-                if (casella.isUsata() || casella.getSimbolo() != Symbol.EMPTY)
-                    return;
-
-                //seleziona
-                casella.seleziona(player.getSimbolo(), player.getSymbolIndex());
-                var resultPlay = turnoAi(player, ai, caselle, mode);
-                switch (resultPlay) {
-                    case P1 -> {
-                        player.setVittorie(player.getVittorie() + 1);
-                        mostraInformazioni("Gioco terminato", "Hai vinto!");
-                        clean(caselle);
-                    }
-                    case P2 -> {
-                        player.setSconfitte(player.getSconfitte() + 1);
-                        mostraInformazioni("Gioco terminato", "Hai perso!");
-                        clean(caselle);
-                    }
-                    case TIE -> {
-                        player.setPareggi(player.getPareggi() + 1);
-                        mostraInformazioni("Gioco terminato", "Hai pareggiato!");
-                        clean(caselle);
-                    }
-                }
-                try {
-                    GameSaveUtil.salvaSuFile(new GameSave(player), "save.json");
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
-            });
-
-
-            casella.setBorder(new LineBorder(Color.BLACK));
-            caselle.add(casella);
-            panelGioco.add(casella);
-        }
-
-        panel.add(panelGioco);
-        frame.remove(panel);
-        frame.add(panel);
-        frame.revalidate();
-        frame.repaint();
-    }
-
-}
+package ui;import logic.*;import logic.enums.CheckType;import logic.enums.Difficulty;import logic.enums.Symbol;import logic.save.GameSave;import logic.save.GameSaveUtil;import static logic.GameFunctions.clean;import static logic.GameFunctions.turnoAi;import static logic.enums.CheckType.*;import static logic.enums.ReturnTurno.NOT_FINISHED;import static logic.enums.ReturnTurno.TIE;import static logic.enums.Symbol.*;import static ui.UIUtils.*;import javax.swing.*;import javax.swing.border.LineBorder;import java.awt.*;import java.io.IOException;import java.util.ArrayList;import java.util.List;import java.util.Objects;/** * Main UI class for the Tic Tac Toe game application */public class UiApplication {    /**     * AI player instance     */    private static Ai ai = new Ai();    /**     * Human player instance     */    private static Player player = new Player();    /**     * Represents the current mode configuration for the application.     * The mode is of type {@link CheckType} and determines the type of validation     * or interaction being conducted within the application.     * Possible values for the mode include specific predefined types such as     * {@code HORIZONTAL}, {@code VERTICALE}, {@code LINEAR}, {@code DIAGONALE},     * {@code ANTIDIAGONALE}, {@code OBLIQUO}, or {@code ALL}.     * The default configuration for this variable is set to {@code ALL}.     * This configuration impacts the behavior of the application logic.     */    private static CheckType mode = ALL;    /**     * Main application window     */    private static JFrame frame;    /**     * Initializes and starts the game UI     */    public void start() {        copyright();        frame = new JFrame("Tick Tack Toe");        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);        frame.setSize(getX(100), getY(100));        frame.setLocationRelativeTo(null);        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);        frame.setLayout(null);        var dif = menuPanel();        gamePanel(dif, false);        frame.setVisible(true);    }    /**     * Creates and configures the menu panel with difficulty and player settings     * @return Selected game difficulty     */    public static Difficulty menuPanel() {        var panel = new JPanel();        panel.setBounds(getX(0), getY(0), getX(25), getY(20));        panel.setBackground(Color.white);        panel.setLayout(new GridLayout(3, 1, 4, 4));        // Panel for difficulty settings        var panelDiff = new JPanel();        panelDiff.setBounds(getX(0), getY(0), getX(25), getY(20));        panelDiff.setBackground(Color.gray);        panelDiff.setLayout(new GridLayout(1, 3, 4, 4));        panelDiff.setBorder(new LineBorder(Color.DARK_GRAY, 2));        var labelDiff = creaLabel("Difficoltà", 0, 0, 100, 10, 12, Color.black);        panelDiff.add(labelDiff);        var comboDiff = new JComboBox<>(Difficulty.values());        comboDiff.setBounds(getX(0), getY(0), getX(100), getY(20));        panelDiff.add(comboDiff);        var salva = new JButton();        salva.setText("Salva");        ai = new Ai((Difficulty) comboDiff.getSelectedItem(), X, player.getSymbolIndex());        salva.addActionListener(e -> {            ai = new Ai((Difficulty) comboDiff.getSelectedItem(), X, player.getSymbolIndex());            gamePanel(ai.getDifficulty(), false);        });        panel.add(panelDiff);        panel.add(salva);        // Load saved game data        var save = new GameSave();        try {            save = GameSaveUtil.caricaDaFile("save.json");        } catch (IOException e) {            System.out.println("errore nel caricamento dati");        } catch (NullPointerException e) {            System.out.println("dati nulli");        }        player = save.getPlayer() == null ? new Player("Player 1", X, 0) : save.getPlayer();        // Player settings panel        var panelPlayer = new JPanel();        panelPlayer.setBounds(getX(0), getY(20), getX(25), getY(20));        panelPlayer.setBackground(Color.gray);        panelPlayer.setLayout(new GridLayout(2, 7, 4, 4));        panelPlayer.setBorder(new LineBorder(Color.DARK_GRAY, 2));        // Player stats labels        panelPlayer.add(new JLabel("Nome giocatore"));        panelPlayer.add(new JLabel("inserisci stile"));        panelPlayer.add(new JLabel("Simbolo"));        panelPlayer.add(new JLabel("Vittorie"));        panelPlayer.add(new JLabel("Sconfitte"));        panelPlayer.add(new JLabel("Pareggi"));        panelPlayer.add(new JLabel(""));        var areaNome = new JTextField(player.getNome());        panelPlayer.add(areaNome);        //symbol style        String[] style = {"normale", "tipo1", "tipo2"};        var comboStyle = new JComboBox<>(style);        panelPlayer.add(comboStyle);        // Symbol selection        var panelSimbolo = new JPanel(new GridLayout(2, 1, 4, 4));        var comboPlayer = new JComboBox<>(new Symbol[]{player.getSimbolo(), player.getSimbolo() == X ? O : X});        var savebtnS = new JButton();        savebtnS.setText("Salva player");        savebtnS.addActionListener(e -> {            try {                var simbolo = (Symbol) comboPlayer.getSelectedItem();                player.setNome(areaNome.getText());                player.setSimbolo(simbolo);                player.setSymbolIndex(comboStyle.getSelectedIndex());                GameSaveUtil.salvaSuFile(new GameSave(player), "save.json");                menuPanel();                gamePanel(ai.getDifficulty(), true);            } catch (IOException ex) {                throw new RuntimeException(ex);            }            menuPanel();        });        panelSimbolo.add(comboPlayer);        panelSimbolo.add(savebtnS);        panelPlayer.add(panelSimbolo);        // Stats display        panelPlayer.add(new JLabel(String.valueOf(player.getVittorie())));        panelPlayer.add(new JLabel(String.valueOf(player.getSconfitte())));        panelPlayer.add(new JLabel(String.valueOf(player.getPareggi())));        //button for reset        var reset = new JButton("Reset");        reset.addActionListener(e -> {            player.setVittorie(0);            player.setSconfitte(0);            player.setPareggi(0);            try {                GameSaveUtil.salvaSuFile(new GameSave(player), "save.json");            } catch (IOException ex) {                throw new RuntimeException(ex);            }            menuPanel();            frame.revalidate();            frame.repaint();        });        panelPlayer.add(reset);        frame.add(panelPlayer);        frame.remove(panel);        panel.removeAll();        panel.revalidate();        panel.repaint();        frame.add(panel);        return (Difficulty) comboDiff.getSelectedItem();    }    /**     * Creates and configures the main game board panel     *     * @param difficulty Selected game difficulty     */    public static void gamePanel(Difficulty difficulty, boolean hasChangedSymbol) {        var panel = new JPanel();        panel.setBounds(getX(25), getY(0), getX(55), getY(100));        panel.setBackground(Color.white);        panel.setLayout(null);        //messaggio per far capire che modalità è:        var moda = new JLabel("Mod : " + mode.toString() + " " + (mode == ALL ? "(normale tris)" : "(tris modificato)"));        moda.setBounds(getX(0), getY(20), getX(30), getY(20));        panel.add(moda);        //Game rule        var panelRule = new JPanel(new GridLayout(2, 2, 4, 4));        panelRule.setBounds(getX(0), getY(0), getX(30), getY(20));        panelRule.add(new JLabel("Scegli la modalità di vincita"));        var comboRule = new JComboBox<>(new CheckType[]{ALL, HORIZONTAL, VERTICALE, LINEAR, DIAGONALE, ANTIDIAGONALE, OBLIQUO});        panelRule.add(comboRule);        //bottone per applicare        var salva = new JButton("Applica");        salva.addActionListener(e -> {            mode = (CheckType) comboRule.getSelectedItem();            moda.setText("Mod : " + Objects.requireNonNull(mode) + " " + (mode == ALL ? "(normale tris)" : "(tris modificato)"));        });        panelRule.add(salva);        panel.add(panelRule);        // Game board panel        int size = 3;        var panelGioco = new JPanel();        panelGioco.setBounds(getX(10), getY(50), getX(30), getY(40));        panelGioco.setBackground(Color.gray);        panelGioco.setLayout(new GridLayout(size, size, 4, 4));        panelGioco.setBorder(new LineBorder(Color.DARK_GRAY, 2));        // Create game cells        ai = new Ai(difficulty, player.getSimbolo() == X ? O : X, player.getSymbolIndex());        List<Casella> caselle = new ArrayList<>();        for (int i = 0; i < size * size; i++) {            var casella = new Casella();            casella.addActionListener(e -> {                // Se è già usata esce                if (casella.isUsata() || casella.getSimbolo() != Symbol.EMPTY )                    return;                //seleziona                casella.seleziona(player.getSimbolo(), player.getSymbolIndex());                var resultPlay = turnoAi(player, ai, caselle, mode);                if(GameFunctions.isFull(caselle) == TIE && resultPlay == NOT_FINISHED)                    resultPlay = TIE;                switch (resultPlay) {                    case P1 -> {                        player.incrementaVittorie();                        mostraInformazioni("Gioco terminato", "Hai vinto!");                    }                    case P2 -> {                        player.incrementaSconfitte();                        mostraInformazioni("Gioco terminato", "Hai perso!");                    }                    case TIE -> {                        player.incrementaPareggi();                        mostraInformazioni("Gioco terminato", "Hai pareggiato!");                    }                    case NOT_FINISHED -> {return;}                }                try {                    GameSaveUtil.salvaSuFile(new GameSave(player), "save.json");                    menuPanel();                    clean(caselle);                } catch (IOException ex) {                    throw new RuntimeException(ex);                }            });            if(hasChangedSymbol)                clean(caselle);            caselle.add(casella);            panelGioco.add(casella);        }        panel.add(panelGioco);        frame.remove(panel);        frame.revalidate();        frame.repaint();        frame.add(panel);    }}

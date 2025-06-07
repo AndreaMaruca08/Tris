@@ -37,10 +37,6 @@ public class Ai {
             if(casella.getSimbolo() == Symbol.EMPTY && !casella.isUsata())
                 caselleVuote.add(caselle.indexOf(casella));
         }
-
-        //se non ci sono caselle vuote return - 1 che rappresenta il pareggio
-        if(caselleVuote.isEmpty())
-            return -1;
         //in base alla difficoltà dell Ai risponde in modo adeguato
         return switch (difficulty){
             case EASY -> rispostaSemplice(caselleVuote);

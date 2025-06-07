@@ -2,10 +2,10 @@
   "player" : {
     "nome" : "pippo",
     "simbolo" : "X",
-    "vittorie" : 21,
-    "sconfitte" : 1,
-    "pareggi" : 1,
+    "vittorie" : 0,
+    "sconfitte" : 0,
+    "pareggi" : 0,
     "partite" : 0,
-    "symbolIndex" : 1
+    "symbolIndex" : 0
   }
 }

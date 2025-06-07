@@ -19,4 +19,14 @@ public class Player {
     int pareggi = 0;
     int partite = 0;
     int symbolIndex;
+
+    public void incrementaVittorie(){
+        vittorie++;
+    }
+    public void incrementaSconfitte(){
+        sconfitte++;
+    }
+    public void incrementaPareggi(){
+        pareggi++;
+    }
 }

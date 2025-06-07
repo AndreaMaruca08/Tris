@@ -52,6 +52,14 @@ public class GameFunctions {
             casella.reset();
     }
 
+    public static ReturnTurno isFull(List<Casella> caselle){
+        for(var casella : caselle){
+            if(casella.getSimbolo() == Symbol.EMPTY)
+                return NOT_FINISHED;
+        }
+        return TIE;
+    }
+
     public static ReturnTurno turnoAi(Player player, Ai ai, List<Casella> caselle, CheckType checkType) {
         // Configurazione IA corretta in base al Player
         var sP1 = player.getSimbolo();
@@ -64,8 +72,6 @@ public class GameFunctions {
         // L'IA effettua la mossa restituendo l'indice della matrice da selezionare
         var azione = ai.azione(caselle); // Metodo "azione" decide dove giocare
 
-        //se l'azione riceve -1 (valore che indica un pareggio) return TIE
-        if (azione == -1) return TIE;
 
         // La casella selezionata dall'IA viene aggiornata
         caselle.get(azione).seleziona(ai.getSimbolo(), ai.getSymbolIndex());
