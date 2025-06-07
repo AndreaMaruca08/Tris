@@ -1,0 +1,11 @@
+{
+  "player" : {
+    "nome" : "pippo",
+    "simbolo" : "X",
+    "vittorie" : 21,
+    "sconfitte" : 1,
+    "pareggi" : 1,
+    "partite" : 0,
+    "symbolIndex" : 1
+  }
+}
