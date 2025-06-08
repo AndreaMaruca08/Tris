@@ -1,11 +1,16 @@
 {
   "player" : {
     "nome" : "pippo",
-    "simbolo" : "X",
-    "vittorie" : 0,
-    "sconfitte" : 0,
-    "pareggi" : 0,
+    "simbolo" : "O",
+    "vittorie" : 1,
+    "sconfitte" : 1,
+    "pareggi" : 1,
     "partite" : 0,
+    "symbolIndex" : 0
+  },
+  "ai" : {
+    "difficulty" : "HARD",
+    "simbolo" : "X",
     "symbolIndex" : 0
   }
 }

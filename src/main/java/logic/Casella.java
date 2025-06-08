@@ -11,11 +11,12 @@ import java.awt.*;
 import java.net.URL;
 
 /**
- * The Casella class represents a customizable button that is designed to be used
+ * The Casella class represents a customizable button designed to be used
  * as a cell in a grid-based game, such as Tic-Tac-Toe. It extends the functionality
  * of a {@link JButton} and adds specific properties and behaviors to represent
  * and manage its state.
- *
+ * <br>
+ * <br>
  * The Casella class includes features for handling a {@link Symbol}, whether
  * the cell has been selected (used), visual feedback through icons, and methods
  * to simulate interactions and reset its state.
@@ -30,11 +31,17 @@ public class Casella extends JButton {
     public Casella() {
         super();
     }
+    // Aggiungi un costruttore di copia per la deep copy
+    public Casella(Casella original) {
+        this.simbolo = original.simbolo;
+        this.usata = original.usata;
+    }
+
 
     //simula il click della casella
     public void seleziona(Symbol simbolo, int symbolIndex) {
         //se già usata fa return
-        if(this.usata)
+        if (this.usata)
             return;
 
         //prende il percorso dell'immagine X O
@@ -47,13 +54,15 @@ public class Casella extends JButton {
         //imposta l'immagine
         URL url = UiApplication.class.getResource(path);
         if (url != null) {
-            int width = this.getWidth();
-            int height = this.getHeight();
+            // Usa dimensioni predefinite se width o height sono 0
+            int width = this.getWidth() > 0 ? this.getWidth() : 100; // Usa 100 come larghezza predefinita
+            int height = this.getHeight() > 0 ? this.getHeight() : 100; // Usa 100 come altezza predefinita
+
             ImageIcon originalIcon = new ImageIcon(url);
             Image scaledImage = originalIcon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
             setIcon(new ImageIcon(scaledImage));
         } else {
-            log.error("Impossibile trovare l'immagine: " + path);
+            log.error("Impossibile trovare l'immagine: {} ", path);
             return;
         }
 

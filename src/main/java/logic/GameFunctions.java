@@ -7,6 +7,7 @@ import logic.enums.CheckType;
 import logic.enums.ReturnTurno;
 import logic.enums.Symbol;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -22,7 +23,7 @@ public class GameFunctions {
         return CheckTable.check(checkType, new char[]{simbolo, simbolo == 'X' ? 'O' : 'X'}, giocate);
     }
 
-    private static char[][] convertCaselleToChar(List<Casella> caselle) {
+    public static char[][] convertCaselleToChar(List<Casella> caselle) {
         // Calcola la dimensione della griglia (radice quadrata della dimensione totale delle caselle)
         int size = (int) Math.sqrt(caselle.size());
 
@@ -69,14 +70,23 @@ public class GameFunctions {
         if (caselle == null || caselle.isEmpty())
             throw new IllegalArgumentException("La lista delle caselle non è valida.");
 
+        if(getAvailablePositions(caselle).isEmpty())
+            return TIE;
         // L'IA effettua la mossa restituendo l'indice della matrice da selezionare
-        var azione = ai.azione(caselle); // Metodo "azione" decide dove giocare
-
+        var azione = ai.azione(caselle, checkType); // Metodo "azione" decide dove giocare
 
         // La casella selezionata dall'IA viene aggiornata
         caselle.get(azione).seleziona(ai.getSimbolo(), ai.getSymbolIndex());
 
         // Controlla lo stato del gioco dopo la mossa dell'IA
         return GameFunctions.isOver(player.getSimbolo(), caselle, checkType);
+    }
+    public static List<Integer> getAvailablePositions(List<Casella> caselle){
+        List<Integer> caselleVuote = new ArrayList<>();
+        for(var casella : caselle){
+            if(casella.getSimbolo() == Symbol.EMPTY && !casella.isUsata())
+                caselleVuote.add(caselle.indexOf(casella));
+        }
+        return caselleVuote;
     }
 }
