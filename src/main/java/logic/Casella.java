@@ -26,7 +26,7 @@ import java.net.URL;
 @Data
 public class Casella extends JButton {
     private Symbol simbolo = Symbol.EMPTY;
-    private boolean usata = false;
+    private boolean used = false;
 
     public Casella() {
         super();
@@ -34,14 +34,14 @@ public class Casella extends JButton {
     // Aggiungi un costruttore di copia per la deep copy
     public Casella(Casella original) {
         this.simbolo = original.simbolo;
-        this.usata = original.usata;
+        this.used = original.used;
     }
 
 
     //simula il click della casella
     public void seleziona(Symbol simbolo, int symbolIndex) {
-        //se già usata fa return
-        if (this.usata)
+        //se già used fa return
+        if (this.used)
             return;
 
         //prende il percorso dell'immagine X O
@@ -67,7 +67,7 @@ public class Casella extends JButton {
         }
 
         //imposta Usata a true e il simbolo siccome è stata selezionata
-        this.setUsata(true);
+        this.setUsed(true);
         this.setSimbolo(simbolo);
         this.setFocusPainted(false);
         this.setOpaque(false);
@@ -79,7 +79,7 @@ public class Casella extends JButton {
 
 
     public void reset() {
-        this.usata = false;
+        this.used = false;
         this.setIcon(null);
         this.setSimbolo(Symbol.EMPTY);
 

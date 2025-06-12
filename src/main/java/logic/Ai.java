@@ -1,10 +1,16 @@
 package logic;
 import logic.enums.*;
 import lombok.*;
+
 import java.util.*;
 
+import static logic.GameFunctions.convertCaselleToChar;
+import static logic.GameFunctions.cronologiaAi;
+import static logic.enums.ParamTabella.*;
+import static logic.enums.Difficulty.EXTREME;
 import static logic.enums.ReturnTurno.*;
 import static logic.enums.Symbol.*;
+import static ui.UiApplication.cronologiaPlayer;
 
 /**
  * Represents an Artificial Intelligence (AI) player in a game.
@@ -25,40 +31,53 @@ import static logic.enums.Symbol.*;
  * - HARD: Placeholder for custom logic for hard difficulty.
  */
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class Ai {
     private Difficulty difficulty = Difficulty.EASY;
     private Symbol simbolo;
     private int symbolIndex = 0;
+    private boolean passive = true;
 
+
+    public Ai(Difficulty difficulty,Symbol simbolo, int symbolIndex) {
+        this.simbolo = simbolo;
+        this.symbolIndex = symbolIndex;
+        this.difficulty = difficulty;
+    }
+    private static List<Integer> caselleVuote = new ArrayList<>();
+    private static List<Casella> caselleVere = new ArrayList<>();
+    private static CheckType checkType = CheckType.ALL;
+    public static int angoloCasuale = (int) (Math.random() * 4);
     //returns the index of the Casella to remove
-    public int azione(List<Casella> caselle, CheckType checkType){
+    public int azione(List<Casella> caselle, CheckType checkTypePass){
         //Per ogni casella che è vuota (e per sicurezza si controlla anche che la variabile Usata sia false):
         // aggiungo a una List di Integer l'indice della casella vuota così che l'Ai può lavorare con gli indici
-        var caselleVuote = GameFunctions.getAvailablePositions(caselle);
+        caselleVuote = GameFunctions.getAvailablePositions(caselle);
+        checkType = checkTypePass;
+        caselleVere = caselle;
+        //attacca per primo
+        if(!passive && caselleVuote.isEmpty() && difficulty != EXTREME)
+            return rispostaExtrema();
 
         //in base alla difficoltà dell Ai risponde in modo adeguato
         return switch (difficulty){
-            case EASY -> rispostaSemplice(caselleVuote);
-            case MEDIUM -> rispostaMedia(caselleVuote, caselle, checkType);
-            case HARD -> rispostaDifficile(caselleVuote, caselle, checkType);
+            case EASY -> rispostaSemplice();
+            case MEDIUM -> rispostaMedia();
+            case HARD -> rispostaDifficile();
             case EXTREME -> rispostaExtrema();
         };
     }
 
     /**
      * Selects a random element from a list of integers and returns it.
-     * If the list is empty, it returns 0.
-     *
-     * @param caselle a list of integers representing indexes or positions
+     * If the list is empty, it returns 0
      *                from which a random selection will be made
      * @return an integer representing a randomly selected element from the list,
      *         or 0 if the list is empty
      */
-    public static int rispostaSemplice(List<Integer> caselle){
-        int randomIndex = (int) (Math.random() * caselle.size());
-        return caselle.get(randomIndex);
+    public static int rispostaSemplice(){
+        int randomIndex = (int) (Math.random() * caselleVuote.size());
+        return caselleVuote.get(randomIndex);
     }
 
     /**
@@ -66,24 +85,18 @@ public class Ai {
      * It first checks if there is a potential winning move for the player,
      * and if so, returns the index of that move. If no winning move is found,
      * it defaults to selecting a random move.
-     *
-     * @param caselleVuote a list of integers representing the indices of empty cells
-     *                     in the game board
-     * @param caselleVere  a list of {@link Casella} objects representing the cells
-     *                     on the game board
-     * @param checkType    a {@link CheckType} enum specifying the type of check
-     *                     to perform for a potential winning move
+
      * @return the index of the selected cell for the move. If a winning move is
      *         found, its index is returned. Otherwise, it falls back to a randomly
      *         selected empty cell.
      */
-    public int rispostaMedia(List<Integer> caselleVuote, List<Casella> caselleVere, CheckType checkType) {
+    public int rispostaMedia() {
         //controllo se e a quale indice può vincere
-        int win = checkForWin(caselleVuote, caselleVere, checkType);
+        int win = checkForWin();
         // Se non trova una mossa vincente fa una risposta semplice
         if (win != -1)
             return win;
-        return rispostaSemplice(caselleVuote);
+        return rispostaSemplice();
     }
 
     /**
@@ -91,28 +104,21 @@ public class Ai {
      * and defensive strategies. The method first checks if the AI can make a winning move,
      * followed by checking if it can block the opponent's winning move. If neither condition
      * is met, it resorts to a simple random move strategy.
-     *
-     * @param caselleVuote a list of integers representing the indices of available, empty positions
-     *                     on the game board.
-     * @param caselleVere  a list of {@link Casella} objects representing the current state of the
-     *                     game board.
-     * @param checkType    the type of check to perform for win conditions, represented by {@link CheckType}.
      * @return the index of the selected move. If the AI identifies a winning move, that index is returned.
      *         If a defensive move is identified, its index is returned. Otherwise, an index is randomly
      *         selected from the available positions.
      */
-    public int rispostaDifficile(List<Integer> caselleVuote, List<Casella> caselleVere, CheckType checkType){
+    public int rispostaDifficile(){
         //prima controlla se può vincere lui
-        var winCheck = checkForWin(caselleVuote, caselleVere, checkType);
+        var winCheck = checkForWin();
         if (winCheck != -1)
             return winCheck;
         //poi controlla se può fermare il player ma solo se prima non può vincere
-        var winPlayerCheck = checkForPlayerWin(caselleVuote, caselleVere, checkType);
+        var winPlayerCheck = checkForPlayerWin();
         if (winPlayerCheck != -1)
             return winPlayerCheck;
-        return rispostaSemplice(caselleVuote);
+        return rispostaSemplice();
     }
-
     /**
      * Determines the index of the optimal element to select or remove from the provided list of integers.
      * This method uses advanced logic to evaluate the list and return the most strategic index
@@ -121,9 +127,161 @@ public class Ai {
      */
     public int rispostaExtrema(){
 
+        if(passive){
+           return difesaAngolo();
+        }
+        return attaccoAngolo();
+    }
+    public int difesaAngolo(){
+        int vuote = caselleVuote.size();
+        int vere = caselleVere.size();
+        var centro = caselleVere.get(4);
+        boolean hasOppositeCornerMove = (vere - cronologiaPlayer.getFirst() - 1) == cronologiaPlayer.getLast();
+
+        //prima mossa -> se angolo -> centro                                                                     prima mossa
+        if(vuote == vere - 1 && !centro.isUsed())
+            return 4;
+        //seconda mossa -> se rimangono
+        if ((vuote == vere - 3) && hasOppositeCornerMove) {
+            //se il nemico ha posizionato in basso al centro (posizione che vorresti usare tu)
+            if (cronologiaPlayer.getLast() == 7)
+                return rispostaDifficile();
+            return 7;
+        }
+
+        // se nessuna condizione risposta difficile
+        return rispostaDifficile();
+    }
+
+    public int attaccoAngolo(){
+        int vere = caselleVere.size();
+        var centro = caselleVere.get(4);
+        var vuote = caselleVuote.size();
+        ParamTabella angolo = switch (angoloCasuale){
+            case 0 -> ANGOLO_UP_LEFT;
+            case 1 -> ANGOLO_UP_RIGHT;
+            case 2 -> ANGOLO_DOWN_LEFT;
+            case 3 -> ANGOLO_DOWN_RIGHT;
+            default -> throw new IllegalStateException("Angolo inesistente: " + angoloCasuale);
+        };
+        int row = switch (angoloCasuale){
+            case 0, 1 -> FIRST_ROW.getValue();
+            case 2, 3 -> LAST_ROW.getValue();
+            default -> throw new IllegalStateException("Angolo inesistente " + angoloCasuale);
+        };
+        int col = switch (angoloCasuale){
+            case 0, 2 -> FIRST_COLUMN.getValue();
+            case 1, 3 -> LAST_COLUMN.getValue();
+            default -> throw new IllegalStateException("Angolo inesistente " + angoloCasuale);
+        };
+        cronologiaAi.add(angolo.getValue());
+        int angoloOpposto = vere - cronologiaAi.getFirst() - 1;
 
 
-        return 0;
+        //----------PRRIMA MOSSA--------------
+        if(vuote == vere)
+            return angolo.getValue();
+        // ---------SECONDA MOSSA-------------
+        //route 1 -> risposta a mossa centrale
+        if(caselleVere.get(angoloOpposto).isUsed())
+            return rispostaDifficile();
+        if(vuote == vere - 2 && centro.isUsed())
+            return angoloOpposto;
+        //route 2 -> vittoria al 100%
+        if(vuote == vere - 2  && isRowOccupied(row)){
+            System.out.println("SDIJANDOOJASFOWNEFOWOEFMWEOFMWOEIFMWEOIFMWOIEFMWOEIFM");
+            return switch (angolo){
+                case ANGOLO_UP_LEFT -> ANGOLO_DOWN_LEFT.getValue();
+                case ANGOLO_DOWN_LEFT -> ANGOLO_UP_LEFT.getValue();
+                case ANGOLO_UP_RIGHT -> ANGOLO_DOWN_RIGHT.getValue();
+                case ANGOLO_DOWN_RIGHT -> ANGOLO_UP_RIGHT.getValue();
+                default -> throw new IllegalStateException("Angolo inesistente: " + angolo);
+            };
+        }
+        if(vuote == vere - 2  && isColumnOccupied(col)){
+            return switch (angolo){
+                case ANGOLO_UP_LEFT -> ANGOLO_UP_RIGHT.getValue();
+                case ANGOLO_DOWN_LEFT -> ANGOLO_DOWN_RIGHT.getValue();
+                case ANGOLO_UP_RIGHT -> ANGOLO_UP_LEFT.getValue();
+                case ANGOLO_DOWN_RIGHT -> ANGOLO_DOWN_LEFT.getValue();
+                default -> throw new IllegalStateException("Angolo inesistente: " + angolo);
+            };
+        }
+
+        // ---------TERZA MOSSA------------- VITTORIA
+        if (vuote == vere - 4) {
+            System.out.println("DENTRO TERZA MOSSA");
+
+            // Se il centro è occupato e l'angolo opposto non è usato
+            if (centro.isUsed() && !caselleVere.get(angoloOpposto).isUsed()) {
+                System.out.println("Occupo l'angolo opposto per garantire la vittoria.");
+                return angoloOpposto;
+            }
+
+            // Strategia basata sull'angolo iniziale per completare la vittoria
+            return switch (angolo) {
+                case ANGOLO_UP_LEFT -> {
+                    if (!caselleVere.get(ANGOLO_DOWN_RIGHT.getValue()).isUsed()) {
+                        yield ANGOLO_DOWN_RIGHT.getValue();
+                    } else {
+                        yield ANGOLO_DOWN_LEFT.getValue();
+                    }
+                }
+                case ANGOLO_UP_RIGHT -> {
+                    if (!caselleVere.get(ANGOLO_DOWN_LEFT.getValue()).isUsed()) {
+                        yield ANGOLO_DOWN_LEFT.getValue();
+                    } else {
+                        yield ANGOLO_DOWN_RIGHT.getValue();
+                    }
+                }
+                case ANGOLO_DOWN_LEFT -> {
+                    if (!caselleVere.get(ANGOLO_UP_RIGHT.getValue()).isUsed()) {
+                        yield ANGOLO_UP_RIGHT.getValue();
+                    } else {
+                        yield ANGOLO_UP_LEFT.getValue();
+                    }
+                }
+                case ANGOLO_DOWN_RIGHT -> {
+                    if (!caselleVere.get(ANGOLO_UP_LEFT.getValue()).isUsed()) {
+                        yield ANGOLO_UP_LEFT.getValue();
+                    } else {
+                        yield ANGOLO_UP_RIGHT.getValue();
+                    }
+                }
+                default -> throw new IllegalStateException("Angolo inesistente: " + angolo);
+            };
+        }
+
+
+
+
+
+        return rispostaDifficile();
+    }
+    public boolean isRowOccupied(int row){
+
+        System.out.println("DENTRO RIGHE OCCUPATE");
+        char simboloPlayer = this.simbolo.toString().charAt(0) == 'X' ? 'O' : 'X';
+        var caselleChar = convertCaselleToChar(caselleVere);
+        for(int i = 0; i < 3; i++){
+            System.out.println(caselleChar[row][i] + "PROVARIGHE");
+            if(caselleChar[row][i] == simboloPlayer){
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean isColumnOccupied(int column){
+        System.out.println("DENTRO COLONNE OCCUPATE");
+        char simboloPlayer = this.simbolo.toString().charAt(0) == 'X' ? 'O' : 'X';
+        var caselleChar = convertCaselleToChar(caselleVere);
+        for(int i = 0; i < 3; i++){
+            System.out.println(caselleChar[i][column] + "PROVACOLONNA");
+            if(caselleChar[i][column] == simboloPlayer){
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -132,12 +290,9 @@ public class Ai {
      * and checks if it results in a win based on the provided check type.
      * Returns the index of the winning move if found or -1 if no winning move exists.
      *
-     * @param caselleVuote a list of integers representing the indexes of currently empty cells.
-     * @param caselleVere a list of Casella objects representing the current state of the game board.
-     * @param checkType the type of pattern to check for a winning condition (horizontal, diagonal, etc.).
      * @return the index of the winning move if a winning condition is met, or -1 if no winning move is possible.
      */
-    public int checkForWin(List<Integer> caselleVuote, List<Casella> caselleVere, CheckType checkType){
+    public int checkForWin(){
         List<Casella> caselleFalse = new ArrayList<>();
         for (Casella casella : caselleVere) {
             caselleFalse.add(new Casella(casella)); // Usa il costruttore di copia
@@ -150,7 +305,7 @@ public class Ai {
             caselleFalse.get(casella).seleziona(this.getSimbolo(), this.getSymbolIndex());
 
             // Converti la lista simulata in un array di char[][] per il controllo
-            char[][] caselleChar = GameFunctions.convertCaselleToChar(caselleFalse);
+            char[][] caselleChar = convertCaselleToChar(caselleFalse);
 
             // Controlla se è possibile vincere con questa simulazione
             if (CheckTable.check(checkType, new char[]{ simbolo == 'X' ? 'O' : 'X', simbolo}, caselleChar) == P2) {
@@ -166,12 +321,9 @@ public class Ai {
      * Checks if there is a potential winning move for the player based on the current game state.
      * Simulates each possible move and evaluates if it leads to a winning configuration for the opposing player.
      *
-     * @param caselleVuote a list of integers representing the indices of empty cells on the game board
-     * @param caselleVere a list of Casella objects representing the current state of the game board
-     * @param checkType an enum indicating the specific type of check to perform (e.g., horizontal, vertical, diagonal)
      * @return the index of the cell that would allow the player to win, or -1 if no such move exists
      */
-    public int checkForPlayerWin(List<Integer> caselleVuote, List<Casella> caselleVere, CheckType checkType){
+    public int checkForPlayerWin(){
         List<Casella> caselleFalse = new ArrayList<>();
         for (Casella casella : caselleVere) {
             caselleFalse.add(new Casella(casella)); // Usa il costruttore di copia
@@ -184,7 +336,7 @@ public class Ai {
             caselleFalse.get(casella).seleziona(this.getSimbolo() == X ? O:X, this.getSymbolIndex());
 
             // Converti la lista simulata in un array di char[][] per il controllo
-            char[][] caselleChar = GameFunctions.convertCaselleToChar(caselleFalse);
+            char[][] caselleChar = convertCaselleToChar(caselleFalse);
 
             // Controlla se è possibile vincere con questa simulazione
             if (CheckTable.check(checkType, new char[]{simbolo == 'X' ? 'O' : 'X', simbolo}, caselleChar) == P1) {

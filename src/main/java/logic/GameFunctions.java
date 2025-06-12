@@ -16,6 +16,8 @@ import java.util.List;
  * condition of game cells.
  */
 public class GameFunctions {
+    public static List<Integer> cronologiaAi = new ArrayList<>();
+
 
     public static ReturnTurno isOver(Symbol player, List<Casella> caselle, CheckType checkType) {
         char[][] giocate = convertCaselleToChar(caselle);
@@ -53,18 +55,18 @@ public class GameFunctions {
             casella.reset();
     }
 
-    public static ReturnTurno isFull(List<Casella> caselle){
-        for(var casella : caselle){
-            if(casella.getSimbolo() == Symbol.EMPTY)
-                return NOT_FINISHED;
-        }
-        return TIE;
-    }
+//    public static ReturnTurno isFull(List<Casella> caselle){
+//        for(var casella : caselle){
+//            if(casella.getSimbolo() == Symbol.EMPTY)
+//                return NOT_FINISHED;
+//        }
+//        return TIE;
+//    }
 
     public static ReturnTurno turnoAi(Player player, Ai ai, List<Casella> caselle, CheckType checkType) {
         // Configurazione IA corretta in base al Player
         var sP1 = player.getSimbolo();
-        if (sP1 == X) ai.setSimbolo(O); else ai.setSimbolo(X);
+        ai.setSimbolo(sP1 == X ? O : X);
 
         // La lista delle celle deve essere valida
         if (caselle == null || caselle.isEmpty())
@@ -72,10 +74,13 @@ public class GameFunctions {
 
         if(getAvailablePositions(caselle).isEmpty())
             return TIE;
+        System.out.println(caselle.size());
+
         // L'IA effettua la mossa restituendo l'indice della matrice da selezionare
         var azione = ai.azione(caselle, checkType); // Metodo "azione" decide dove giocare
-
+        cronologiaAi.add(azione);
         // La casella selezionata dall'IA viene aggiornata
+        System.out.println(azione);
         caselle.get(azione).seleziona(ai.getSimbolo(), ai.getSymbolIndex());
 
         // Controlla lo stato del gioco dopo la mossa dell'IA
@@ -84,7 +89,7 @@ public class GameFunctions {
     public static List<Integer> getAvailablePositions(List<Casella> caselle){
         List<Integer> caselleVuote = new ArrayList<>();
         for(var casella : caselle){
-            if(casella.getSimbolo() == Symbol.EMPTY && !casella.isUsata())
+            if(casella.getSimbolo() == Symbol.EMPTY && !casella.isUsed())
                 caselleVuote.add(caselle.indexOf(casella));
         }
         return caselleVuote;
